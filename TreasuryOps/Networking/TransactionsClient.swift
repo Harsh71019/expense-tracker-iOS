@@ -26,6 +26,8 @@ enum TransactionsClient {
         categoryId: String? = nil,
         query: String? = nil,
         tag: String? = nil,
+        from: Date? = nil,
+        to: Date? = nil,
         cursor: String? = nil,
         limit: Int = 50
     ) async throws -> Page {
@@ -35,6 +37,8 @@ enum TransactionsClient {
         if let categoryId { queryItems.append(URLQueryItem(name: "categoryId", value: categoryId)) }
         if let query, !query.isEmpty { queryItems.append(URLQueryItem(name: "q", value: query)) }
         if let tag { queryItems.append(URLQueryItem(name: "tag", value: tag)) }
+        if let from { queryItems.append(URLQueryItem(name: "from", value: ISO8601DateFormatter().string(from: from))) }
+        if let to { queryItems.append(URLQueryItem(name: "to", value: ISO8601DateFormatter().string(from: to))) }
         if let cursor { queryItems.append(URLQueryItem(name: "cursor", value: cursor)) }
         components.queryItems = queryItems
 

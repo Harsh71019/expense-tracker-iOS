@@ -9,6 +9,7 @@ final class TransactionsModel {
     private(set) var isLoadingMore = false
     private(set) var errorMessage: String?
     private(set) var hasMore = true
+    private(set) var filters = TransactionFilters()
 
     var searchText = "" {
         didSet { scheduleSearch() }
@@ -22,13 +23,26 @@ final class TransactionsModel {
         await refresh()
     }
 
+    func applyFilters(_ newFilters: TransactionFilters) async {
+        filters = newFilters
+        await refresh()
+    }
+
+    /// Reloads from the start. Deliberately does **not** cancel
+    /// `searchTask` here: `scheduleSearch()`'s task calls this method
+    /// directly as its own continuation, so cancelling `searchTask` from
+    /// inside `refresh()` would self-cancel the very task that's running —
+    /// `URLSession`'s async APIs are cancellation-aware, so the network
+    /// call would throw `CancellationError` immediately and every debounced
+    /// search would silently fail. `scheduleSearch()` already cancels any
+    /// previous *pending* debounce before starting a new one, which is all
+    /// that's needed to prevent them from stacking.
     func refresh() async {
-        searchTask?.cancel()
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
         do {
-            let page = try await TransactionsClient.list(query: normalizedSearchText)
+            let page = try await fetchPage(cursor: nil)
             transactions = page.items
             nextCursor = page.pageInfo.nextCursor
             hasMore = page.pageInfo.hasMore
@@ -53,7 +67,7 @@ final class TransactionsModel {
         isLoadingMore = true
         defer { isLoadingMore = false }
         do {
-            let page = try await TransactionsClient.list(query: normalizedSearchText, cursor: cursor)
+            let page = try await fetchPage(cursor: cursor)
             transactions.append(contentsOf: page.items)
             nextCursor = page.pageInfo.nextCursor
             hasMore = page.pageInfo.hasMore
@@ -64,10 +78,27 @@ final class TransactionsModel {
         }
     }
 
+    private func fetchPage(cursor: String?) async throws -> TransactionsClient.Page {
+        let bounds = filters.dateRange.bounds
+        return try await TransactionsClient.list(
+            accountId: filters.accountId,
+            categoryId: filters.categoryId,
+            query: normalizedSearchText,
+            tag: filters.queryTag,
+            from: bounds?.from,
+            to: bounds?.to,
+            cursor: cursor
+        )
+    }
+
     private var normalizedSearchText: String? {
         searchText.isEmpty ? nil : searchText
     }
 
+    /// A debounced timer only — the task it schedules calls `refresh()`
+    /// directly (never re-enters `scheduleSearch`), so cancelling
+    /// `searchTask` here only ever cancels a *previous, still-pending*
+    /// debounce, never a network call already in flight.
     private func scheduleSearch() {
         searchTask?.cancel()
         searchTask = Task {

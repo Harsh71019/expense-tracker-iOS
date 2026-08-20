@@ -3,6 +3,7 @@ import SwiftUI
 
 struct TransactionsView: View {
     @State private var model = TransactionsModel()
+    @State private var isShowingFilters = false
 
     var body: some View {
         NavigationStack {
@@ -10,11 +11,17 @@ struct TransactionsView: View {
                 if model.isLoading && model.transactions.isEmpty {
                     ProgressView()
                 } else if model.transactions.isEmpty {
-                    if model.searchText.isEmpty {
+                    if model.searchText.isEmpty && model.filters.activeCount == 0 {
                         ContentUnavailableView(
                             "No Transactions",
                             systemImage: "list.bullet.rectangle",
                             description: Text("Transactions will show up here.")
+                        )
+                    } else if model.searchText.isEmpty {
+                        ContentUnavailableView(
+                            "No Matching Transactions",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text("Try widening your filters.")
                         )
                     } else {
                         ContentUnavailableView.search(text: model.searchText)
@@ -25,6 +32,23 @@ struct TransactionsView: View {
             }
             .navigationTitle("Transactions")
             .searchable(text: $model.searchText, prompt: "Search transactions")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingFilters = true
+                    } label: {
+                        Image(systemName: model.filters.activeCount > 0
+                            ? "line.3.horizontal.decrease.circle.fill"
+                            : "line.3.horizontal.decrease.circle")
+                    }
+                    .accessibilityLabel("Filters")
+                }
+            }
+            .sheet(isPresented: $isShowingFilters) {
+                TransactionFilterSheet(filters: model.filters) { newFilters in
+                    Task { await model.applyFilters(newFilters) }
+                }
+            }
             .task { await model.loadFirstPageIfNeeded() }
         }
     }
