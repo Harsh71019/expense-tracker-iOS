@@ -28,6 +28,13 @@ final class TransactionsModel {
         await refresh()
     }
 
+    /// Reflects an edit made on the detail screen (e.g. a category change)
+    /// back into the list without a full reload.
+    func replace(_ updated: Transaction) {
+        guard let index = transactions.firstIndex(where: { $0.id == updated.id }) else { return }
+        transactions[index] = updated
+    }
+
     /// Reloads from the start. Deliberately does **not** cancel
     /// `searchTask` here: `scheduleSearch()`'s task calls this method
     /// directly as its own continuation, so cancelling `searchTask` from

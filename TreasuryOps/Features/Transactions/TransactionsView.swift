@@ -49,6 +49,9 @@ struct TransactionsView: View {
                     Task { await model.applyFilters(newFilters) }
                 }
             }
+            .navigationDestination(for: Transaction.self) { transaction in
+                TransactionDetailView(transaction: transaction, model: model)
+            }
             .task { await model.loadFirstPageIfNeeded() }
         }
     }
@@ -82,7 +85,7 @@ private struct TransactionRow: View {
     let transaction: Transaction
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        NavigationLink(value: transaction) {
             switch transaction.status {
             case .reversed:
                 content
