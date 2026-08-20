@@ -95,7 +95,7 @@ struct TransactionDetailView: View {
             transaction = updated
             model.replace(updated)
         } catch {
-            errorMessage = "Could not update category."
+            errorMessage = error.localizedDescription
         }
     }
 

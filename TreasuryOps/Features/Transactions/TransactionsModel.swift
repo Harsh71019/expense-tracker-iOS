@@ -54,7 +54,7 @@ final class TransactionsModel {
             nextCursor = page.pageInfo.nextCursor
             hasMore = page.pageInfo.hasMore
         } catch {
-            errorMessage = "Could not load transactions."
+            errorMessage = error.localizedDescription
         }
     }
 
