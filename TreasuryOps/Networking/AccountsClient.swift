@@ -17,7 +17,14 @@ enum AccountsClient {
         request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateAPIResponse(response, data: data)
-        return try JSONDecoder().decode([Account].self, from: data)
+
+        // `Account.creditCardConfig.nextStatementAt` is a Date — without
+        // this, the default `.deferredToDate` strategy expects a numeric
+        // timestamp and throws on the backend's ISO8601 string the moment
+        // any account has a credit card config.
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode([Account].self, from: data)
     }
 
     /// `POST /v1/accounts`. Requires an `Idempotency-Key` header, same as
