@@ -34,6 +34,14 @@ final class TransactionsModel {
     /// overwrite the edit with the pre-edit server state it fetched.
     private var stateVersion = 0
 
+    /// Bumped only when `transactions` is wholesale-replaced by `refresh()`
+    /// (search, filter changes, pull-to-refresh) — never by incremental
+    /// edits (`replace(_:)`, `applyBatchCategoryUpdate`). The view uses
+    /// this to clear a stale multi-selection after a reload, without
+    /// wiping an in-progress selection every time a single transaction
+    /// gets edited from the detail screen.
+    private(set) var reloadCount = 0
+
     func loadFirstPageIfNeeded() async {
         guard transactions.isEmpty else { return }
         await refresh()
@@ -98,6 +106,7 @@ final class TransactionsModel {
             guard versionAtStart == stateVersion else { return }
             transactions = page.items
             stateVersion += 1
+            reloadCount += 1
             nextCursor = page.pageInfo.nextCursor
             hasMore = page.pageInfo.hasMore
         } catch {

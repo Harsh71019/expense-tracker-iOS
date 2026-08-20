@@ -14,7 +14,8 @@ struct TransactionDetailView: View {
     @State private var accountName: String?
     @State private var isUpdatingCategory = false
     @State private var showsUpdateConfirmation = false
-    @State private var errorMessage: String?
+    @State private var categoryErrorMessage: String?
+    @State private var optionsErrorMessage: String?
     @State private var confirmationTask: Task<Void, Never>?
 
     init(transaction: Transaction, model: TransactionsModel) {
@@ -50,11 +51,11 @@ struct TransactionDetailView: View {
                 CategoryUpdateFooter(
                     isUpdating: isUpdatingCategory,
                     showsConfirmation: showsUpdateConfirmation,
-                    errorMessage: errorMessage
+                    errorMessage: categoryErrorMessage
                 )
             }
 
-            Section("Details") {
+            Section {
                 LabeledContent("Account", value: accountName ?? "—")
                 LabeledContent("Status", value: transaction.status.rawValue.capitalized)
                 if !transaction.tags.isEmpty {
@@ -62,6 +63,18 @@ struct TransactionDetailView: View {
                 }
                 if let counterpartyHandle = transaction.counterpartyHandle {
                     LabeledContent("Counterparty", value: counterpartyHandle)
+                }
+            } header: {
+                Text("Details")
+            } footer: {
+                // Category/account *options* failed to load — distinct from
+                // categoryErrorMessage (a category *update* failing), and
+                // shown here rather than in the Category footer so it
+                // doesn't read as "your category change failed" when it
+                // wasn't the update that failed at all.
+                if let optionsErrorMessage {
+                    Label(optionsErrorMessage, systemImage: "exclamationmark.circle.fill")
+                        .foregroundStyle(.signalAmber)
                 }
             }
         }
@@ -93,7 +106,7 @@ struct TransactionDetailView: View {
         confirmationTask?.cancel()
         showsUpdateConfirmation = false
         isUpdatingCategory = true
-        errorMessage = nil
+        categoryErrorMessage = nil
         defer { isUpdatingCategory = false }
         do {
             let updated = try await TransactionsClient.updateCategory(
@@ -104,7 +117,7 @@ struct TransactionDetailView: View {
             model.replace(updated)
             showConfirmationBriefly()
         } catch {
-            errorMessage = error.localizedDescription
+            categoryErrorMessage = error.localizedDescription
         }
     }
 
@@ -128,14 +141,14 @@ struct TransactionDetailView: View {
         case .success(let value):
             categories = value
         case .failure(let error):
-            errorMessage = error.localizedDescription
+            optionsErrorMessage = error.localizedDescription
         }
 
         switch await accountsResult {
         case .success(let value):
             accountName = value.first { $0.id == transaction.accountId }?.name
         case .failure(let error):
-            errorMessage = errorMessage ?? error.localizedDescription
+            optionsErrorMessage = optionsErrorMessage ?? error.localizedDescription
         }
     }
 }

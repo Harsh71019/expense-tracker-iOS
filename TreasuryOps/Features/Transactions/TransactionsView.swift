@@ -103,6 +103,12 @@ struct TransactionsView: View {
                 await model.loadFirstPageIfNeeded()
                 await model.loadCategoriesIfNeeded()
             }
+            // A reload (search/filter/pull-to-refresh) can drop, reorder,
+            // or replace rows entirely — any selection made before it no
+            // longer reliably refers to what's now on screen.
+            .onChange(of: model.reloadCount) {
+                selectedIDs = []
+            }
         }
     }
 
@@ -116,7 +122,21 @@ struct TransactionsView: View {
     }
 
     private func assignCategory(_ category: Category) async {
+        // The onChange(of: model.reloadCount) handler clears selectedIDs
+        // on any reload, but a reload can still land in the narrow window
+        // between opening the assign sheet and tapping a category. Re-check
+        // here rather than trust the selection is still what's on screen —
+        // if anything selected has disappeared, reject the whole batch
+        // instead of silently sending a set the person never actually saw.
         let ids = selectedIDs
+        let currentIDs = Set(model.transactions.map(\.id))
+        guard !ids.isEmpty, ids.isSubset(of: currentIDs) else {
+            batchErrorMessage = "Your selection changed. Please reselect and try again."
+            selectedIDs = []
+            editMode = .inactive
+            return
+        }
+
         isAssigningCategory = true
         defer { isAssigningCategory = false }
         do {
