@@ -71,11 +71,12 @@ struct TransactionsView: View {
             .toolbarVisibility(editMode.isEditing ? .hidden : .automatic, for: .tabBar)
             .safeAreaInset(edge: .bottom) {
                 if editMode.isEditing {
-                    BulkActionBar(
+                    AssignCategoryBadge(
                         isAssigning: isAssigningCategory,
                         canAssign: selectedIDs.isEmpty == false && selectedKind != nil,
                         onAssign: { isShowingBatchAssign = true }
                     )
+                    .padding(.bottom, 12)
                 }
             }
             .sheet(isPresented: $isShowingFilters) {
@@ -174,35 +175,34 @@ struct TransactionsView: View {
     }
 }
 
-/// Takes over the tab bar's spot while selecting — actions only; the
-/// selection count already lives in the navigation title (matching
-/// Files/Photos, which don't repeat the count in both places).
-private struct BulkActionBar: View {
+/// A single filled circular badge, not a spanning bar — same weight as
+/// the filter button in the top toolbar, just placed where the tab bar
+/// was while selecting.
+private struct AssignCategoryBadge: View {
     let isAssigning: Bool
     let canAssign: Bool
     let onAssign: () -> Void
 
-    var body: some View {
-        HStack {
-            Spacer()
+    private let diameter: CGFloat = 52
 
-            if isAssigning {
-                ProgressView()
-            } else {
-                Button(action: onAssign) {
+    var body: some View {
+        Button(action: onAssign) {
+            ZStack {
+                Circle()
+                    .fill(canAssign ? Color.verdigris : Color.secondary)
+                if isAssigning {
+                    ProgressView()
+                        .tint(.white)
+                } else {
                     Image(systemName: "tag.fill")
                         .font(.system(size: 20))
+                        .foregroundStyle(.white)
                 }
-                .foregroundStyle(canAssign ? Color.verdigris : Color.secondary)
-                .disabled(!canAssign)
-                .accessibilityLabel("Assign Category")
             }
-
-            Spacer()
+            .frame(width: diameter, height: diameter)
         }
-        .padding(.vertical, 14)
-        .glassEffect(.regular, in: .rect(cornerRadius: 20))
-        .padding(.horizontal)
+        .disabled(!canAssign || isAssigning)
+        .accessibilityLabel("Assign Category")
     }
 }
 
