@@ -5,6 +5,7 @@ struct TransactionsView: View {
     @State private var model = TransactionsModel()
     @State private var isShowingFilters = false
     @State private var selectedIDs: Set<String> = []
+    @State private var editMode: EditMode = .inactive
     @State private var isShowingBatchAssign = false
     @State private var isAssigningCategory = false
     @State private var batchErrorMessage: String?
@@ -51,8 +52,8 @@ struct TransactionsView: View {
                     EditButton()
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
-                    if !selectedIDs.isEmpty {
-                        Text("\(selectedIDs.count) Selected")
+                    if editMode.isEditing {
+                        Text(selectedIDs.isEmpty ? "Select Transactions" : "\(selectedIDs.count) Selected")
                             .foregroundStyle(.secondary)
                         Spacer()
                         if isAssigningCategory {
@@ -61,11 +62,12 @@ struct TransactionsView: View {
                             Button("Assign Category") {
                                 isShowingBatchAssign = true
                             }
-                            .disabled(selectedKind == nil)
+                            .disabled(selectedIDs.isEmpty || selectedKind == nil)
                         }
                     }
                 }
             }
+            .environment(\.editMode, $editMode)
             .sheet(isPresented: $isShowingFilters) {
                 TransactionFilterSheet(filters: model.filters) { newFilters in
                     Task { await model.applyFilters(newFilters) }
@@ -124,6 +126,7 @@ struct TransactionsView: View {
             )
             model.applyBatchCategoryUpdate(transactionIds: ids, categoryId: category.id)
             selectedIDs = []
+            editMode = .inactive
         } catch {
             batchErrorMessage = error.localizedDescription
         }
