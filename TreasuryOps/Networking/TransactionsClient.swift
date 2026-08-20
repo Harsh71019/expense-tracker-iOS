@@ -45,15 +45,37 @@ enum TransactionsClient {
         var request = URLRequest(url: components.url!)
         request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
         let (data, response) = try await URLSession.shared.data(for: request)
-        try validate(response, data: data)
+        try validateAPIResponse(response, data: data)
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(Page.self, from: data)
     }
 
-    private static func validate(_ response: URLResponse, data: Data) throws {
-        guard let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) else { return }
-        throw URLError(.badServerResponse)
+    /// `PATCH /v1/transactions/{id}`. Only `categoryId` is settable here —
+    /// `nil` explicitly clears the category (encoded as JSON `null`, not
+    /// omitted, so this can't be confused with "leave it unchanged").
+    ///
+    /// Requires an `Idempotency-Key` header — the controller parses it with
+    /// `IdempotencyKeySchema.parse(key)`, and that schema is `z.string().uuid()`
+    /// with no `.optional()`, so a missing header 400s even though the
+    /// `@Headers` decorator itself marks the parameter optional.
+    static func updateCategory(transactionId: String, categoryId: String?) async throws -> Transaction {
+        struct RequestBody: Encodable {
+            let categoryId: String?
+        }
+        var request = URLRequest(url: transactionsURL.appendingPathComponent(transactionId))
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "Idempotency-Key")
+        request.httpBody = try JSONEncoder().encode(RequestBody(categoryId: categoryId))
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateAPIResponse(response, data: data)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(Transaction.self, from: data)
     }
 }

@@ -18,6 +18,14 @@ final class TransactionsModel {
     private var nextCursor: String?
     private var searchTask: Task<Void, Never>?
 
+    /// Bumped by every mutation to `transactions` — `refresh()`/
+    /// `loadNextPage()` capture it before their network call and only
+    /// apply the response if nothing else (most importantly `replace(_:)`)
+    /// has mutated state in the meantime. Without this, a fetch started
+    /// *before* a category edit can complete *after* it and silently
+    /// overwrite the edit with the pre-edit server state it fetched.
+    private var stateVersion = 0
+
     func loadFirstPageIfNeeded() async {
         guard transactions.isEmpty else { return }
         await refresh()
@@ -26,6 +34,21 @@ final class TransactionsModel {
     func applyFilters(_ newFilters: TransactionFilters) async {
         filters = newFilters
         await refresh()
+    }
+
+    /// Reflects an edit made on the detail screen (e.g. a category change)
+    /// back into the list without a full reload. If a category filter is
+    /// active and the edit moved the transaction out of it, the row is
+    /// removed instead of updated in place — otherwise it'd keep showing
+    /// in a filtered list it no longer belongs in.
+    func replace(_ updated: Transaction) {
+        stateVersion += 1
+        guard let index = transactions.firstIndex(where: { $0.id == updated.id }) else { return }
+        if let categoryId = filters.categoryId, updated.categoryId != categoryId {
+            transactions.remove(at: index)
+        } else {
+            transactions[index] = updated
+        }
     }
 
     /// Reloads from the start. Deliberately does **not** cancel
@@ -41,13 +64,16 @@ final class TransactionsModel {
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
+        let versionAtStart = stateVersion
         do {
             let page = try await fetchPage(cursor: nil)
+            guard versionAtStart == stateVersion else { return }
             transactions = page.items
+            stateVersion += 1
             nextCursor = page.pageInfo.nextCursor
             hasMore = page.pageInfo.hasMore
         } catch {
-            errorMessage = "Could not load transactions."
+            errorMessage = error.localizedDescription
         }
     }
 

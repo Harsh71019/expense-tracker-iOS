@@ -6,12 +6,12 @@ import Foundation
 /// `Transaction` schema currently serialize as two structurally-identical
 /// but separately-named schemas, so one hand-written type here is simpler
 /// and more reliable than reconciling two generated ones.
-struct Transaction: Identifiable, Decodable, Equatable {
-    enum Kind: String, Decodable {
+struct Transaction: Identifiable, Decodable, Hashable {
+    enum Kind: String, Decodable, Hashable {
         case expense, income
     }
 
-    enum Status: String, Decodable {
+    enum Status: String, Decodable, Hashable {
         case posted, reversed, reversal
     }
 

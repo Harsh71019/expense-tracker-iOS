@@ -7,9 +7,7 @@ enum AccountsClient {
         var request = URLRequest(url: AppEnvironment.apiBaseURL.appendingPathComponent("v1/accounts"))
         request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
+        try validateAPIResponse(response, data: data)
         return try JSONDecoder().decode([Account].self, from: data)
     }
 }
