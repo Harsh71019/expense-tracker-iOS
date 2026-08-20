@@ -29,7 +29,6 @@ struct HomeView: View {
             .background(Color(.systemGroupedBackground))
             .refreshable { await model.refresh() }
             .task { await model.loadIfNeeded() }
-            .task { await transactionsModel.loadCategoriesIfNeeded() }
             .navigationDestination(for: HomeCashflowMetric.self) { metric in
                 HomeCashflowDetailView(metric: metric)
             }

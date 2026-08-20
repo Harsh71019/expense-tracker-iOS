@@ -99,13 +99,24 @@ struct HomeCashflowDetailView: View {
     }
 
     private func load() async {
+        // `.task(id: range)` cancels the in-flight call when `range`
+        // changes, but a call already past its `await` can still resume
+        // and write state right as the new one starts. Capture the range
+        // this call is answering for and gate every write on it still
+        // being current, rather than trusting cancellation timing alone.
+        let requestedRange = range
         isLoading = true
         errorMessage = nil
-        defer { isLoading = false }
+        cashflow = nil
         do {
-            cashflow = try await DashboardClient.cashflow(range: range)
+            let result = try await DashboardClient.cashflow(range: requestedRange)
+            guard requestedRange == range else { return }
+            cashflow = result
+            isLoading = false
         } catch {
+            guard requestedRange == range else { return }
             errorMessage = error.localizedDescription
+            isLoading = false
         }
     }
 }
