@@ -1,5 +1,14 @@
 import SwiftUI
 
+/// Pushed when a `TopSpendingItem` with a real category is tapped — pushes
+/// `TransactionsScreen` pre-filtered to that category. The "Uncategorized"
+/// bucket has no `categoryId` and no matching `TransactionFilters` option,
+/// so it's excluded at the call site rather than routed here.
+struct HomeCategoryDrillDown: Hashable {
+    let categoryId: String
+    let categoryName: String
+}
+
 /// Ranked list of the month's top spending categories, each with a bar
 /// proportional to the top category's amount.
 struct HomeTopSpendingCard: View {
@@ -33,6 +42,22 @@ private struct TopSpendingRow: View {
     let fraction: Double
 
     var body: some View {
+        if let categoryId = item.categoryId {
+            NavigationLink(value: HomeCategoryDrillDown(categoryId: categoryId, categoryName: item.name)) {
+                HStack(spacing: 4) {
+                    content
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .buttonStyle(.plain)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         HStack(spacing: 12) {
             CategoryBadge(iconKey: item.icon, colorHex: item.color, diameter: 32)
 

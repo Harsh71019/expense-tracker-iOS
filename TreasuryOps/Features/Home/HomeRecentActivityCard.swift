@@ -6,6 +6,13 @@ struct HomeRecentActivityCard: View {
     let items: [RecentActivityItem]
     let categoriesById: [String: Category]
 
+    /// A row's own id has no full `Transaction` to navigate with — only
+    /// this summary shape — so tapping fetches one on demand rather than
+    /// pushing a value directly. `loadingItemId` marks which row's fetch is
+    /// in flight so that (and only that) row can show a spinner.
+    let loadingItemId: String?
+    let onSelect: (RecentActivityItem) -> Void
+
     var body: some View {
         DashboardCard {
             Text("Recent Activity")
@@ -20,7 +27,17 @@ struct HomeRecentActivityCard: View {
             } else {
                 VStack(spacing: 12) {
                     ForEach(items) { item in
-                        RecentActivityRow(item: item, category: item.categoryId.flatMap { categoriesById[$0] })
+                        Button {
+                            onSelect(item)
+                        } label: {
+                            RecentActivityRow(
+                                item: item,
+                                category: item.categoryId.flatMap { categoriesById[$0] },
+                                isLoading: item.id == loadingItemId
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(loadingItemId != nil)
                         if item.id != items.last?.id {
                             Divider()
                         }
@@ -35,6 +52,7 @@ struct HomeRecentActivityCard: View {
 private struct RecentActivityRow: View {
     let item: RecentActivityItem
     let category: Category?
+    let isLoading: Bool
 
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
@@ -63,6 +81,11 @@ private struct RecentActivityRow: View {
                         .foregroundStyle(.secondary)
                 }
             }
+
+            if isLoading {
+                ProgressView()
+                    .padding(.leading, 4)
+            }
         }
     }
 
@@ -78,7 +101,9 @@ private struct RecentActivityRow: View {
             RecentActivityItem(id: "1", accountId: "a1", accountName: "HDFC Checking", categoryId: nil, type: .expense, amountMinor: 45000, description: "Groceries", occurredAt: .now, tags: []),
             RecentActivityItem(id: "2", accountId: "a1", accountName: "HDFC Checking", categoryId: nil, type: .income, amountMinor: 9_500_000, description: "Salary", occurredAt: .now, tags: [])
         ],
-        categoriesById: [:]
+        categoriesById: [:],
+        loadingItemId: nil,
+        onSelect: { _ in }
     )
     .padding()
 }

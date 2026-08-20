@@ -28,6 +28,10 @@ enum DashboardClient {
         try await get("v1/dashboard/monthly-spending")
     }
 
+    static func cashflow(range: Range) async throws -> CashflowResponse {
+        try await get("v1/dashboard/cashflow", queryItems: [URLQueryItem(name: "range", value: range.rawValue)])
+    }
+
     static func topSpending(range: Range, limit: Int = 5) async throws -> [TopSpendingItem] {
         try await get("v1/dashboard/top-spending", queryItems: [
             URLQueryItem(name: "range", value: range.rawValue),

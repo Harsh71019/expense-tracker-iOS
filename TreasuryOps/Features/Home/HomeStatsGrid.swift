@@ -16,14 +16,16 @@ struct HomeStatsGrid: View {
                 valueText: stats.spent.valueMinor.minorUnitsAsDecimal.formatted(.currency(code: "INR").notation(.compactName)),
                 deltaPct: stats.spent.deltaPct,
                 trend: stats.spent.trend.map(Double.init),
-                tint: .signalAmber
+                tint: .signalAmber,
+                drillDown: .spent
             )
             StatTile(
                 title: "Income",
                 valueText: stats.income.valueMinor.minorUnitsAsDecimal.formatted(.currency(code: "INR").notation(.compactName)),
                 deltaPct: stats.income.deltaPct,
                 trend: stats.income.trend.map(Double.init),
-                tint: .green
+                tint: .green,
+                drillDown: .income
             )
             StatTile(
                 title: "Savings Rate",
@@ -49,8 +51,20 @@ private struct StatTile: View {
     let deltaPct: Double?
     let trend: [Double]
     let tint: Color
+    var drillDown: HomeCashflowMetric?
 
     var body: some View {
+        if let drillDown {
+            NavigationLink(value: drillDown) {
+                content
+            }
+            .buttonStyle(.plain)
+        } else {
+            content
+        }
+    }
+
+    private var content: some View {
         DashboardCard {
             Text(title)
                 .font(.caption)

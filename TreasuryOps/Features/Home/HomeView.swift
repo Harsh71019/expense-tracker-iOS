@@ -5,18 +5,71 @@ struct HomeView: View {
     @Environment(AuthModel.self) private var authModel
     @State private var model = HomeModel()
 
+    /// Feeds `TransactionDetailView` when a recent-activity row is tapped
+    /// — a dedicated model, separate from the Transactions tab's own, so
+    /// a category edit made from here doesn't need to reach across tabs.
+    @State private var transactionsModel = TransactionsModel()
+    @State private var selectedTransaction: Transaction?
+    @State private var loadingRecentActivityId: String?
+    @State private var recentActivityErrorMessage: String?
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     HomeHeaderView(name: authModel.currentUser?.name)
-                    HomeContent(model: model)
+                    HomeContent(
+                        model: model,
+                        loadingRecentActivityId: loadingRecentActivityId,
+                        onSelectRecentActivity: selectTransaction
+                    )
                 }
                 .padding(16)
             }
             .background(Color(.systemGroupedBackground))
             .refreshable { await model.refresh() }
             .task { await model.loadIfNeeded() }
+            .task { await transactionsModel.loadCategoriesIfNeeded() }
+            .navigationDestination(for: HomeCashflowMetric.self) { metric in
+                HomeCashflowDetailView(metric: metric)
+            }
+            .navigationDestination(for: MonthlySpending.self) { monthly in
+                HomeMonthlySpendingDetailView(monthly: monthly)
+            }
+            .navigationDestination(for: HomeCategoryDrillDown.self) { drillDown in
+                TransactionsScreen(
+                    initialFilters: TransactionFilters(categoryId: drillDown.categoryId, dateRange: .thisMonth),
+                    title: drillDown.categoryName
+                )
+            }
+            .navigationDestination(item: $selectedTransaction) { transaction in
+                TransactionDetailView(transaction: transaction, model: transactionsModel)
+            }
+            .alert(
+                "Couldn't Load Transaction",
+                isPresented: Binding(
+                    get: { recentActivityErrorMessage != nil },
+                    set: { isPresented in if !isPresented { recentActivityErrorMessage = nil } }
+                ),
+                presenting: recentActivityErrorMessage
+            ) { _ in
+                Button("OK", role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
+        }
+    }
+
+    private func selectTransaction(_ item: RecentActivityItem) {
+        guard loadingRecentActivityId == nil else { return }
+        loadingRecentActivityId = item.id
+        Task {
+            defer { loadingRecentActivityId = nil }
+            do {
+                selectedTransaction = try await TransactionsClient.get(id: item.id)
+            } catch {
+                recentActivityErrorMessage = error.localizedDescription
+            }
         }
     }
 }
@@ -26,6 +79,8 @@ struct HomeView: View {
 /// re-evaluate the header on every refresh.
 private struct HomeContent: View {
     let model: HomeModel
+    let loadingRecentActivityId: String?
+    let onSelectRecentActivity: (RecentActivityItem) -> Void
 
     var body: some View {
         if let errorMessage = model.errorMessage, model.summary == nil {
@@ -56,7 +111,12 @@ private struct HomeContent: View {
             if let spendMix = model.spendMix {
                 HomeSpendMixCard(mix: spendMix)
             }
-            HomeRecentActivityCard(items: model.recentActivity, categoriesById: model.categoriesById)
+            HomeRecentActivityCard(
+                items: model.recentActivity,
+                categoriesById: model.categoriesById,
+                loadingItemId: loadingRecentActivityId,
+                onSelect: onSelectRecentActivity
+            )
         }
     }
 }

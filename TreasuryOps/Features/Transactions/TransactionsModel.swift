@@ -9,11 +9,18 @@ final class TransactionsModel {
     private(set) var isLoadingMore = false
     private(set) var errorMessage: String?
     private(set) var hasMore = true
-    private(set) var filters = TransactionFilters()
+    private(set) var filters: TransactionFilters
 
     /// Cached for row badges and the bulk-assign sheet — fetched once,
     /// not re-fetched per row.
     private(set) var categories: [Category] = []
+
+    /// `initialFilters` lets an entry point outside the Transactions tab
+    /// (e.g. tapping a Home dashboard category) open this screen
+    /// pre-filtered instead of always starting from "All Time".
+    init(initialFilters: TransactionFilters = TransactionFilters()) {
+        filters = initialFilters
+    }
 
     var categoriesById: [String: Category] {
         Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })

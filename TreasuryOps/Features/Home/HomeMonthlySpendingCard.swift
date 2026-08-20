@@ -7,10 +7,23 @@ struct HomeMonthlySpendingCard: View {
     let monthly: MonthlySpending
 
     var body: some View {
+        NavigationLink(value: monthly) {
+            cardContent
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var cardContent: some View {
         DashboardCard {
-            Text("Spending This Month")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text("Spending This Month")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
 
             Text(monthly.totalMinor.minorUnitsAsDecimal, format: .currency(code: "INR"))
                 .font(.system(size: 30, weight: .bold, design: .rounded))

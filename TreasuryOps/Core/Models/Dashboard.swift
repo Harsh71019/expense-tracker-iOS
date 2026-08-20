@@ -45,15 +45,15 @@ struct RecentActivityItem: Identifiable, Decodable, Hashable {
     let tags: [String]
 }
 
-struct MonthlySpending: Decodable, Equatable {
-    struct DailyBucket: Decodable, Equatable, Identifiable {
+struct MonthlySpending: Decodable, Equatable, Hashable {
+    struct DailyBucket: Decodable, Equatable, Hashable, Identifiable {
         let date: Date?
         let amountMinor: Int
 
         var id: Date { date ?? .distantPast }
     }
 
-    struct WeeklyBucket: Decodable, Equatable {
+    struct WeeklyBucket: Decodable, Equatable, Hashable {
         let startAt: Date?
         let endAt: Date?
         let amountMinor: Int
@@ -78,6 +78,19 @@ struct TopSpendingItem: Identifiable, Decodable, Equatable {
     /// categories, so fall back to `name` — stable within one snapshot
     /// list, which is all `Identifiable` needs here.
     var id: String { categoryId ?? name }
+}
+
+struct CashflowResponse: Decodable, Equatable {
+    struct Bucket: Decodable, Equatable, Hashable, Identifiable {
+        let label: String
+        let incomeMinor: Int
+        let expenseMinor: Int
+
+        var id: String { label }
+    }
+
+    let range: String
+    let buckets: [Bucket]
 }
 
 struct SpendMix: Decodable, Equatable {

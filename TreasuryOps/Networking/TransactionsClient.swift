@@ -52,6 +52,20 @@ enum TransactionsClient {
         return try decoder.decode(Page.self, from: data)
     }
 
+    /// `GET /v1/transactions/{id}` — fetches a single transaction by id,
+    /// for entry points (dashboard recent activity) that only have an id
+    /// and a summary shape, not a full `Transaction`.
+    static func get(id: String) async throws -> Transaction {
+        var request = URLRequest(url: transactionsURL.appendingPathComponent(id))
+        request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateAPIResponse(response, data: data)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(Transaction.self, from: data)
+    }
+
     /// `PATCH /v1/transactions/{id}`. Only `categoryId` is settable here —
     /// `nil` explicitly clears the category (encoded as JSON `null`, not
     /// omitted, so this can't be confused with "leave it unchanged").
