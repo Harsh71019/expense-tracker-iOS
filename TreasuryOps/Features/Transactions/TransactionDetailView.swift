@@ -13,7 +13,9 @@ struct TransactionDetailView: View {
     @State private var categories: [Category] = []
     @State private var accountName: String?
     @State private var isUpdatingCategory = false
+    @State private var showsUpdateConfirmation = false
     @State private var errorMessage: String?
+    @State private var confirmationTask: Task<Void, Never>?
 
     init(transaction: Transaction, model: TransactionsModel) {
         _transaction = State(initialValue: transaction)
@@ -30,24 +32,26 @@ struct TransactionDetailView: View {
 
             Section {
                 Picker("Category", selection: categoryBinding) {
-                    Text("Uncategorized").tag(String?.none)
+                    Label("Uncategorized", systemImage: "questionmark.circle")
+                        .tag(String?.none)
                     ForEach(matchingCategories) { category in
-                        Text(category.name).tag(Optional(category.id))
+                        Label {
+                            Text(category.name)
+                        } icon: {
+                            CategoryBadge(iconKey: category.icon, colorHex: category.color, diameter: 22)
+                        }
+                        .tag(Optional(category.id))
                     }
                 }
                 .disabled(isUpdatingCategory)
             } header: {
                 Text("Category")
             } footer: {
-                if isUpdatingCategory {
-                    HStack(spacing: 6) {
-                        ProgressView()
-                        Text("Updating…")
-                    }
-                } else if let errorMessage {
-                    Label(errorMessage, systemImage: "exclamationmark.circle.fill")
-                        .foregroundStyle(.signalAmber)
-                }
+                CategoryUpdateFooter(
+                    isUpdating: isUpdatingCategory,
+                    showsConfirmation: showsUpdateConfirmation,
+                    errorMessage: errorMessage
+                )
             }
 
             Section("Details") {
@@ -61,6 +65,8 @@ struct TransactionDetailView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(TransactionKindWash(kind: transaction.type))
         .navigationTitle("Transaction")
         .navigationBarTitleDisplayMode(.inline)
         .task { await loadOptions() }
@@ -84,6 +90,8 @@ struct TransactionDetailView: View {
 
     private func updateCategory(to categoryId: String?) async {
         guard categoryId != transaction.categoryId else { return }
+        confirmationTask?.cancel()
+        showsUpdateConfirmation = false
         isUpdatingCategory = true
         errorMessage = nil
         defer { isUpdatingCategory = false }
@@ -94,8 +102,21 @@ struct TransactionDetailView: View {
             )
             transaction = updated
             model.replace(updated)
+            showConfirmationBriefly()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    /// A lightweight in-place "toast" rather than a floating overlay — it
+    /// lives in the section footer right under the picker, so the
+    /// confirmation appears exactly where the change was made.
+    private func showConfirmationBriefly() {
+        showsUpdateConfirmation = true
+        confirmationTask = Task {
+            try? await Task.sleep(for: .seconds(1.8))
+            guard !Task.isCancelled else { return }
+            showsUpdateConfirmation = false
         }
     }
 
@@ -116,6 +137,45 @@ struct TransactionDetailView: View {
         case .failure(let error):
             errorMessage = errorMessage ?? error.localizedDescription
         }
+    }
+}
+
+private struct CategoryUpdateFooter: View {
+    let isUpdating: Bool
+    let showsConfirmation: Bool
+    let errorMessage: String?
+
+    var body: some View {
+        Group {
+            if isUpdating {
+                HStack(spacing: 6) {
+                    ProgressView()
+                    Text("Updating…")
+                }
+            } else if showsConfirmation {
+                Label("Category updated", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .transition(.opacity)
+            } else if let errorMessage {
+                Label(errorMessage, systemImage: "exclamationmark.circle.fill")
+                    .foregroundStyle(.signalAmber)
+            }
+        }
+        .animation(.default, value: showsConfirmation)
+        .animation(.default, value: isUpdating)
+    }
+}
+
+/// A quiet income/expense tint behind the whole screen — green for money
+/// in, red for money out. Deliberately faint (6% opacity): a hint, not a
+/// colored panel.
+private struct TransactionKindWash: View {
+    let kind: Transaction.Kind
+
+    var body: some View {
+        (kind == .income ? Color.green : Color.red)
+            .opacity(0.06)
+            .ignoresSafeArea()
     }
 }
 

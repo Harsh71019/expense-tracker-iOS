@@ -4,6 +4,10 @@ import SwiftUI
 struct TransactionsView: View {
     @State private var model = TransactionsModel()
     @State private var isShowingFilters = false
+    @State private var selectedIDs: Set<String> = []
+    @State private var isShowingBatchAssign = false
+    @State private var isAssigningCategory = false
+    @State private var batchErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -27,7 +31,7 @@ struct TransactionsView: View {
                         ContentUnavailableView.search(text: model.searchText)
                     }
                 } else {
-                    TransactionList(model: model)
+                    TransactionList(model: model, selectedIDs: $selectedIDs)
                 }
             }
             .navigationTitle("Transactions")
@@ -43,28 +47,143 @@ struct TransactionsView: View {
                     }
                     .accessibilityLabel("Filters")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    EditButton()
+                }
+                ToolbarItemGroup(placement: .bottomBar) {
+                    if !selectedIDs.isEmpty {
+                        Text("\(selectedIDs.count) Selected")
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if isAssigningCategory {
+                            ProgressView()
+                        } else {
+                            Button("Assign Category") {
+                                isShowingBatchAssign = true
+                            }
+                            .disabled(selectedKind == nil)
+                        }
+                    }
+                }
             }
             .sheet(isPresented: $isShowingFilters) {
                 TransactionFilterSheet(filters: model.filters) { newFilters in
                     Task { await model.applyFilters(newFilters) }
                 }
             }
+            .sheet(isPresented: $isShowingBatchAssign) {
+                if let selectedKind {
+                    BatchCategoryAssignSheet(
+                        categories: model.categories,
+                        kind: selectedKind,
+                        selectedCount: selectedIDs.count
+                    ) { category in
+                        Task { await assignCategory(category) }
+                    }
+                }
+            }
+            .alert(
+                "Couldn't Assign Category",
+                isPresented: Binding(
+                    get: { batchErrorMessage != nil },
+                    set: { isPresented in if !isPresented { batchErrorMessage = nil } }
+                ),
+                presenting: batchErrorMessage
+            ) { _ in
+                Button("OK", role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
             .navigationDestination(for: Transaction.self) { transaction in
                 TransactionDetailView(transaction: transaction, model: model)
             }
-            .task { await model.loadFirstPageIfNeeded() }
+            .task {
+                await model.loadFirstPageIfNeeded()
+                await model.loadCategoriesIfNeeded()
+            }
         }
+    }
+
+    /// The common expense/income kind across the current selection, or
+    /// `nil` if nothing's selected or the selection mixes both — bulk
+    /// category assignment is only offered when every selected transaction
+    /// shares one kind, since a category itself is always one or the other.
+    private var selectedKind: Transaction.Kind? {
+        let kinds = Set(model.transactions.filter { selectedIDs.contains($0.id) }.map(\.type))
+        return kinds.count == 1 ? kinds.first : nil
+    }
+
+    private func assignCategory(_ category: Category) async {
+        let ids = selectedIDs
+        isAssigningCategory = true
+        defer { isAssigningCategory = false }
+        do {
+            _ = try await TransactionsClient.batchAssignCategory(
+                transactionIds: Array(ids),
+                categoryId: category.id
+            )
+            model.applyBatchCategoryUpdate(transactionIds: ids, categoryId: category.id)
+            selectedIDs = []
+        } catch {
+            batchErrorMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct BatchCategoryAssignSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let categories: [Category]
+    let kind: Transaction.Kind
+    let selectedCount: Int
+    let onAssign: (Category) -> Void
+
+    var body: some View {
+        NavigationStack {
+            List(matchingCategories) { category in
+                Button {
+                    onAssign(category)
+                    dismiss()
+                } label: {
+                    Label {
+                        Text(category.name)
+                            .foregroundStyle(.primary)
+                    } icon: {
+                        CategoryBadge(iconKey: category.icon, colorHex: category.color, diameter: 22)
+                    }
+                }
+            }
+            .navigationTitle("Assign to \(selectedCount) Transactions")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private var matchingCategories: [Category] {
+        categories.filter { $0.kind.rawValue == kind.rawValue }
     }
 }
 
 private struct TransactionList: View {
     let model: TransactionsModel
+    @Binding var selectedIDs: Set<String>
 
     var body: some View {
-        List {
+        // Computed once per body evaluation, not once per row — `ForEach`
+        // re-runs this closure for every visible transaction, and rebuilding
+        // the whole categories dictionary that often would be wasted work.
+        let categoriesById = model.categoriesById
+
+        List(selection: $selectedIDs) {
             ForEach(model.transactions) { transaction in
-                TransactionRow(transaction: transaction)
-                    .task { await model.loadMoreIfNeeded(currentItem: transaction) }
+                TransactionRow(
+                    transaction: transaction,
+                    category: transaction.categoryId.flatMap { categoriesById[$0] }
+                )
+                .task { await model.loadMoreIfNeeded(currentItem: transaction) }
             }
 
             if model.isLoadingMore {
@@ -83,6 +202,7 @@ private struct TransactionList: View {
 
 private struct TransactionRow: View {
     let transaction: Transaction
+    let category: Category?
 
     var body: some View {
         NavigationLink(value: transaction) {
@@ -100,6 +220,9 @@ private struct TransactionRow: View {
     @ViewBuilder
     private var content: some View {
         HStack(alignment: .firstTextBaseline) {
+            CategoryBadge(iconKey: category?.icon, colorHex: category?.color)
+                .alignmentGuide(.firstTextBaseline) { dimensions in dimensions[VerticalAlignment.center] }
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(transaction.description)
                     .font(.body)

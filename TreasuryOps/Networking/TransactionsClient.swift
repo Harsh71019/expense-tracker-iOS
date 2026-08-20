@@ -78,4 +78,30 @@ enum TransactionsClient {
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(Transaction.self, from: data)
     }
+
+    struct BatchCategorizeResult: Decodable {
+        let transactionIds: [String]
+        let categoryId: String
+        let updatedCount: Int
+    }
+
+    /// `PATCH /v1/transactions` (no id — the batch form). Unlike
+    /// `updateCategory`, `categoryId` here is required: the backend has no
+    /// batch "uncategorize."
+    static func batchAssignCategory(transactionIds: [String], categoryId: String) async throws -> BatchCategorizeResult {
+        struct RequestBody: Encodable {
+            let transactionIds: [String]
+            let categoryId: String
+        }
+        var request = URLRequest(url: transactionsURL)
+        request.httpMethod = "PATCH"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
+        request.setValue(UUID().uuidString, forHTTPHeaderField: "Idempotency-Key")
+        request.httpBody = try JSONEncoder().encode(RequestBody(transactionIds: transactionIds, categoryId: categoryId))
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateAPIResponse(response, data: data)
+        return try JSONDecoder().decode(BatchCategorizeResult.self, from: data)
+    }
 }
