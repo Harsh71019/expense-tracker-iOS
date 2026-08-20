@@ -17,7 +17,7 @@ struct Transaction: Identifiable, Decodable, Hashable {
 
     let id: String
     let accountId: String
-    let categoryId: String?
+    var categoryId: String?
     let type: Kind
     let amountMinor: Int
     let occurredAt: Date?

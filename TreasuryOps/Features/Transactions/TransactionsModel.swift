@@ -11,6 +11,14 @@ final class TransactionsModel {
     private(set) var hasMore = true
     private(set) var filters = TransactionFilters()
 
+    /// Cached for row badges and the bulk-assign sheet — fetched once,
+    /// not re-fetched per row.
+    private(set) var categories: [Category] = []
+
+    var categoriesById: [String: Category] {
+        Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0) })
+    }
+
     var searchText = "" {
         didSet { scheduleSearch() }
     }
@@ -26,9 +34,22 @@ final class TransactionsModel {
     /// overwrite the edit with the pre-edit server state it fetched.
     private var stateVersion = 0
 
+    /// Bumped only when `transactions` is wholesale-replaced by `refresh()`
+    /// (search, filter changes, pull-to-refresh) — never by incremental
+    /// edits (`replace(_:)`, `applyBatchCategoryUpdate`). The view uses
+    /// this to clear a stale multi-selection after a reload, without
+    /// wiping an in-progress selection every time a single transaction
+    /// gets edited from the detail screen.
+    private(set) var reloadCount = 0
+
     func loadFirstPageIfNeeded() async {
         guard transactions.isEmpty else { return }
         await refresh()
+    }
+
+    func loadCategoriesIfNeeded() async {
+        guard categories.isEmpty else { return }
+        categories = (try? await CategoriesClient.list()) ?? []
     }
 
     func applyFilters(_ newFilters: TransactionFilters) async {
@@ -51,6 +72,21 @@ final class TransactionsModel {
         }
     }
 
+    /// Same idea as `replace(_:)`, applied to every transaction a batch
+    /// category assignment touched — one `stateVersion` bump for the whole
+    /// batch rather than per-item, so an in-flight refresh only has to
+    /// discard its response once, not N times.
+    func applyBatchCategoryUpdate(transactionIds: Set<String>, categoryId: String) {
+        stateVersion += 1
+        if let activeCategoryId = filters.categoryId, activeCategoryId != categoryId {
+            transactions.removeAll { transactionIds.contains($0.id) }
+        } else {
+            for index in transactions.indices where transactionIds.contains(transactions[index].id) {
+                transactions[index].categoryId = categoryId
+            }
+        }
+    }
+
     /// Reloads from the start. Deliberately does **not** cancel
     /// `searchTask` here: `scheduleSearch()`'s task calls this method
     /// directly as its own continuation, so cancelling `searchTask` from
@@ -70,6 +106,7 @@ final class TransactionsModel {
             guard versionAtStart == stateVersion else { return }
             transactions = page.items
             stateVersion += 1
+            reloadCount += 1
             nextCursor = page.pageInfo.nextCursor
             hasMore = page.pageInfo.hasMore
         } catch {
