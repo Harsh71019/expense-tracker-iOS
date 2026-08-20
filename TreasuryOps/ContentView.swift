@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  TreasuryOps
-//
-//  Created by Harsh on 20/08/26.
-//
-
 import SwiftUI
 import CoreData
 
@@ -21,7 +14,7 @@ struct ContentView: View {
             List {
                 ForEach(items) { item in
                     NavigationLink {
-                        Text("Item at \(item.timestamp!, formatter: itemFormatter)")
+                        Text("Item at harsh editing swift code \(item.timestamp!, formatter: itemFormatter)")
                     } label: {
                         Text(item.timestamp!, formatter: itemFormatter)
                     }

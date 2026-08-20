@@ -11,11 +11,13 @@ import CoreData
 @main
 struct TreasuryOpsApp: App {
     let persistenceController = PersistenceController.shared
+    @State private var authModel = AuthModel()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
                 .environment(\.managedObjectContext, persistenceController.container.viewContext)
+                .environment(authModel)
         }
     }
 }

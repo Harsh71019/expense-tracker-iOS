@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Debug hits 192.168.0.226 over plain HTTP on the home LAN;
+		     NSAllowsLocalNetworking covers any private-range IP literal
+		     without opening up arbitrary insecure loads app-wide. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<!-- Release hits this over Tailscale's WireGuard tunnel, which
+			     already encrypts the transport -- this exception only
+			     satisfies ATS's URL-scheme check, not a real security gap. -->
+			<key>apps.taild40172.ts.net</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

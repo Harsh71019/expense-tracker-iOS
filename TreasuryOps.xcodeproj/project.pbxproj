@@ -6,6 +6,11 @@
 	objectVersion = 110;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3AC1A6493036E11E003F7991 /* OpenAPIURLSession in Frameworks */ = {isa = PBXBuildFile; productRef = 3AC1A6483036E11E003F7991 /* OpenAPIURLSession */; };
+		3AE48C303036DC5E00E62ECA /* OpenAPIRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 3AE48C2F3036DC5E00E62ECA /* OpenAPIRuntime */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		3AE48BE33036B64500E62ECA /* TreasuryOps.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TreasuryOps.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -22,6 +27,8 @@
 		3AE48BE03036B64500E62ECA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				3AC1A6493036E11E003F7991 /* OpenAPIURLSession in Frameworks */,
+				3AE48C303036DC5E00E62ECA /* OpenAPIRuntime in Frameworks */,
 			);
 		};
 /* End PBXFrameworksBuildPhase section */
@@ -31,6 +38,7 @@
 			isa = PBXGroup;
 			children = (
 				3AE48BE53036B64500E62ECA /* TreasuryOps */,
+				3AE48C343036DDAB00E62ECA /* Frameworks */,
 				3AE48BE43036B64500E62ECA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +49,13 @@
 				3AE48BE33036B64500E62ECA /* TreasuryOps.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		3AE48C343036DDAB00E62ECA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -56,10 +71,17 @@
 			);
 			buildRules = (
 			);
+			dependencies = (
+				3AC1A6DC3036E24D003F7991 /* PBXTargetDependency */,
+			);
 			fileSystemSynchronizedGroups = (
 				3AE48BE53036B64500E62ECA /* TreasuryOps */,
 			);
 			name = TreasuryOps;
+			packageProductDependencies = (
+				3AE48C2F3036DC5E00E62ECA /* OpenAPIRuntime */,
+				3AC1A6483036E11E003F7991 /* OpenAPIURLSession */,
+			);
 			productName = TreasuryOps;
 			productReference = 3AE48BE33036B64500E62ECA /* TreasuryOps.app */;
 			productType = "com.apple.product-type.application";
@@ -88,6 +110,11 @@
 			);
 			mainGroup = 3AE48BDA3036B64500E62ECA;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				3AE48C2E3036DC5E00E62ECA /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */,
+				3AE48C313036DC7600E62ECA /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */,
+				3AC1A64A3036E144003F7991 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3AE48BE43036B64500E62ECA /* Products */;
 			projectDirPath = "";
@@ -113,6 +140,13 @@
 			);
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		3AC1A6DC3036E24D003F7991 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			productRef = 3AC1A6DB3036E24D003F7991 /* OpenAPIGenerator */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		3AE48BF13036B64600E62ECA /* Debug configuration for PBXProject "TreasuryOps" */ = {
@@ -241,8 +275,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GK4J2Z44M8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -272,8 +308,10 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GK4J2Z44M8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -316,6 +354,51 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3AC1A64A3036E144003F7991 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-generator";
+			requirement = {
+				kind = exactVersion;
+				version = 1.13.0;
+			};
+		};
+		3AE48C2E3036DC5E00E62ECA /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-runtime";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.12.0;
+			};
+		};
+		3AE48C313036DC7600E62ECA /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/apple/swift-openapi-urlsession";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.3.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3AC1A6483036E11E003F7991 /* OpenAPIURLSession */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3AE48C313036DC7600E62ECA /* XCRemoteSwiftPackageReference "swift-openapi-urlsession" */;
+			productName = OpenAPIURLSession;
+		};
+		3AC1A6DB3036E24D003F7991 /* OpenAPIGenerator */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3AC1A64A3036E144003F7991 /* XCRemoteSwiftPackageReference "swift-openapi-generator" */;
+			productName = "plugin:OpenAPIGenerator";
+		};
+		3AE48C2F3036DC5E00E62ECA /* OpenAPIRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3AE48C2E3036DC5E00E62ECA /* XCRemoteSwiftPackageReference "swift-openapi-runtime" */;
+			productName = OpenAPIRuntime;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3AE48BDB3036B64500E62ECA /* Project object */;
 	validationLevel = 1;
