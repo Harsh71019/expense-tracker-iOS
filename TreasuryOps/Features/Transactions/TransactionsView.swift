@@ -35,35 +35,43 @@ struct TransactionsView: View {
                     TransactionList(model: model, selectedIDs: $selectedIDs)
                 }
             }
-            .navigationTitle("Transactions")
+            .navigationTitle(navigationTitle)
             .searchable(text: $model.searchText, prompt: "Search transactions")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        isShowingFilters = true
-                    } label: {
-                        Image(systemName: model.filters.activeCount > 0
-                            ? "line.3.horizontal.decrease.circle.fill"
-                            : "line.3.horizontal.decrease.circle")
+                if editMode.isEditing {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(isAllSelected ? "Deselect All" : "Select All") {
+                            selectedIDs = isAllSelected ? [] : Set(model.transactions.map(\.id))
+                        }
                     }
-                    .accessibilityLabel("Filters")
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            isShowingFilters = true
+                        } label: {
+                            Image(systemName: model.filters.activeCount > 0
+                                ? "line.3.horizontal.decrease.circle.fill"
+                                : "line.3.horizontal.decrease.circle")
+                        }
+                        .accessibilityLabel("Filters")
+                    }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     EditButton()
                 }
             }
             .environment(\.editMode, $editMode)
+            // Apple's own pattern for a List multi-select inside a
+            // TabView (see Photos' Library tab): the tab bar disappears
+            // entirely while selecting, replaced by a contextual bottom
+            // bar — not stacked alongside it. A child view hiding its
+            // enclosing TabView's tab bar like this is a supported,
+            // built-in mechanism; no state needs to be lifted to
+            // RootTabView for it to work.
+            .toolbarVisibility(editMode.isEditing ? .hidden : .automatic, for: .tabBar)
             .safeAreaInset(edge: .bottom) {
-                // Rendered directly by this view rather than via
-                // `.toolbar(placement: .bottomBar)` — a toolbar-placed
-                // bottom bar's visibility inside a TabView tab (this screen
-                // sits under RootTabView's floating Liquid Glass tab bar)
-                // isn't something to rely on sight-unseen. A safeAreaInset
-                // is plain view content this screen fully controls: it
-                // shows and hides exactly when `editMode.isEditing` says so.
                 if editMode.isEditing {
                     BulkActionBar(
-                        selectedCount: selectedIDs.count,
                         isAssigning: isAssigningCategory,
                         canAssign: selectedIDs.isEmpty == false && selectedKind != nil,
                         onAssign: { isShowingBatchAssign = true }
@@ -123,6 +131,17 @@ struct TransactionsView: View {
         return kinds.count == 1 ? kinds.first : nil
     }
 
+    private var isAllSelected: Bool {
+        !model.transactions.isEmpty && selectedIDs.count == model.transactions.count
+    }
+
+    /// Mirrors Files' pattern: the title becomes a live selection count
+    /// while editing instead of staying "Transactions".
+    private var navigationTitle: String {
+        guard editMode.isEditing else { return "Transactions" }
+        return selectedIDs.isEmpty ? "Select Transactions" : "\(selectedIDs.count) Selected"
+    }
+
     private func assignCategory(_ category: Category) async {
         // The onChange(of: model.reloadCount) handler clears selectedIDs
         // on any reload, but a reload can still land in the narrow window
@@ -155,30 +174,30 @@ struct TransactionsView: View {
     }
 }
 
-/// Floating action bar shown above the tab bar while selecting rows —
-/// same Liquid Glass treatment as the rest of the app's chrome.
+/// Takes over the tab bar's spot while selecting — actions only; the
+/// selection count already lives in the navigation title (matching
+/// Files/Photos, which don't repeat the count in both places).
 private struct BulkActionBar: View {
-    let selectedCount: Int
     let isAssigning: Bool
     let canAssign: Bool
     let onAssign: () -> Void
 
     var body: some View {
         HStack {
-            Text(selectedCount == 0 ? "Select Transactions" : "\(selectedCount) Selected")
-                .foregroundStyle(.secondary)
-
             Spacer()
 
             if isAssigning {
                 ProgressView()
             } else {
-                Button("Assign Category", action: onAssign)
-                    .buttonStyle(.glassProminent)
-                    .disabled(!canAssign)
+                Button(action: onAssign) {
+                    Label("Assign Category", systemImage: "tag.fill")
+                }
+                .buttonStyle(.glassProminent)
+                .disabled(!canAssign)
             }
+
+            Spacer()
         }
-        .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .padding(.horizontal)
