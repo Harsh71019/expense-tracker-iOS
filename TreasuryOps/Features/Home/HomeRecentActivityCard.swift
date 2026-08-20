@@ -84,7 +84,10 @@ private struct RecentActivityRow: View {
 
             if isLoading {
                 ProgressView()
-                    .padding(.leading, 4)
+                    .padding(.leading, 8)
+            } else {
+                DetailChevronBadge(diameter: 20)
+                    .padding(.leading, 8)
             }
         }
     }

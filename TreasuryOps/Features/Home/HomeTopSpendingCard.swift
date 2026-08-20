@@ -44,11 +44,9 @@ private struct TopSpendingRow: View {
     var body: some View {
         if let categoryId = item.categoryId {
             NavigationLink(value: HomeCategoryDrillDown(categoryId: categoryId, categoryName: item.name)) {
-                HStack(spacing: 4) {
+                HStack(spacing: 10) {
                     content
-                    Image(systemName: "chevron.right")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.tertiary)
+                    DetailChevronBadge(diameter: 20)
                 }
             }
             .buttonStyle(.plain)

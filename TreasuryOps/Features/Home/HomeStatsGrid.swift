@@ -66,9 +66,15 @@ private struct StatTile: View {
 
     private var content: some View {
         DashboardCard {
-            Text(title)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            HStack {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if drillDown != nil {
+                    Spacer()
+                    DetailChevronBadge()
+                }
+            }
 
             Text(valueText)
                 .font(.title3.weight(.semibold))
@@ -90,6 +96,11 @@ private struct StatTile: View {
                 .frame(height: 36)
             }
         }
+        // `LazyVGrid` sizes each row to its tallest cell, but `DashboardCard`'s
+        // background only wraps its own intrinsic content — without this, a
+        // tile with less content (e.g. no trend chart) renders visibly
+        // shorter than its row-mate instead of matching the row height.
+        .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
