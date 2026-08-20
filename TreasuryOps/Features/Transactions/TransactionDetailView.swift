@@ -100,10 +100,22 @@ struct TransactionDetailView: View {
     }
 
     private func loadOptions() async {
-        async let categoriesResult = try? CategoriesClient.list()
-        async let accountsResult = try? AccountsClient.list()
-        categories = await categoriesResult ?? []
-        accountName = await accountsResult?.first { $0.id == transaction.accountId }?.name
+        async let categoriesResult: Result<[Category], Error> = Result { try await CategoriesClient.list() }
+        async let accountsResult: Result<[Account], Error> = Result { try await AccountsClient.list() }
+
+        switch await categoriesResult {
+        case .success(let value):
+            categories = value
+        case .failure(let error):
+            errorMessage = error.localizedDescription
+        }
+
+        switch await accountsResult {
+        case .success(let value):
+            accountName = value.first { $0.id == transaction.accountId }?.name
+        case .failure(let error):
+            errorMessage = errorMessage ?? error.localizedDescription
+        }
     }
 }
 
