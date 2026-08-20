@@ -51,23 +51,25 @@ struct TransactionsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     EditButton()
                 }
-                ToolbarItemGroup(placement: .bottomBar) {
-                    if editMode.isEditing {
-                        Text(selectedIDs.isEmpty ? "Select Transactions" : "\(selectedIDs.count) Selected")
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        if isAssigningCategory {
-                            ProgressView()
-                        } else {
-                            Button("Assign Category") {
-                                isShowingBatchAssign = true
-                            }
-                            .disabled(selectedIDs.isEmpty || selectedKind == nil)
-                        }
-                    }
-                }
             }
             .environment(\.editMode, $editMode)
+            .safeAreaInset(edge: .bottom) {
+                // Rendered directly by this view rather than via
+                // `.toolbar(placement: .bottomBar)` — a toolbar-placed
+                // bottom bar's visibility inside a TabView tab (this screen
+                // sits under RootTabView's floating Liquid Glass tab bar)
+                // isn't something to rely on sight-unseen. A safeAreaInset
+                // is plain view content this screen fully controls: it
+                // shows and hides exactly when `editMode.isEditing` says so.
+                if editMode.isEditing {
+                    BulkActionBar(
+                        selectedCount: selectedIDs.count,
+                        isAssigning: isAssigningCategory,
+                        canAssign: selectedIDs.isEmpty == false && selectedKind != nil,
+                        onAssign: { isShowingBatchAssign = true }
+                    )
+                }
+            }
             .sheet(isPresented: $isShowingFilters) {
                 TransactionFilterSheet(filters: model.filters) { newFilters in
                     Task { await model.applyFilters(newFilters) }
@@ -150,6 +152,36 @@ struct TransactionsView: View {
         } catch {
             batchErrorMessage = error.localizedDescription
         }
+    }
+}
+
+/// Floating action bar shown above the tab bar while selecting rows —
+/// same Liquid Glass treatment as the rest of the app's chrome.
+private struct BulkActionBar: View {
+    let selectedCount: Int
+    let isAssigning: Bool
+    let canAssign: Bool
+    let onAssign: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(selectedCount == 0 ? "Select Transactions" : "\(selectedCount) Selected")
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if isAssigning {
+                ProgressView()
+            } else {
+                Button("Assign Category", action: onAssign)
+                    .buttonStyle(.glassProminent)
+                    .disabled(!canAssign)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+        .padding(.horizontal)
     }
 }
 
