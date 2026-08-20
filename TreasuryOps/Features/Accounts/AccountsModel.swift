@@ -65,21 +65,29 @@ final class AccountsModel {
         }
     }
 
+    func clearError() {
+        errorMessage = nil
+    }
+
     /// Returns `nil` on success, the server's error message on failure —
     /// lets the caller (a creation sheet) show the actual reason rather
-    /// than a generic fallback.
+    /// than a generic fallback. `idempotencyKey` is the caller's, not
+    /// generated here, so a retry of the same logical submission reuses
+    /// it (see `AccountsClient.create`).
     func createAccount(
         name: String,
         type: Account.Kind,
         openingBalanceMinor: Int,
-        creditCardConfig: AccountsClient.CreditCardConfigInput?
+        creditCardConfig: AccountsClient.CreditCardConfigInput?,
+        idempotencyKey: String
     ) async -> String? {
         do {
             let account = try await AccountsClient.create(
                 name: name,
                 type: type,
                 openingBalanceMinor: openingBalanceMinor,
-                creditCardConfig: creditCardConfig
+                creditCardConfig: creditCardConfig,
+                idempotencyKey: idempotencyKey
             )
             accounts.append(account)
             return nil
@@ -90,13 +98,20 @@ final class AccountsModel {
 
     /// Optimistic — flips `isArchived` locally so the row leaves the
     /// active list immediately, and rolls back if the request fails.
+    /// Re-finds the account by id both before and after the `await`:
+    /// `refresh()` can reorder or replace `accounts` while this is
+    /// suspended, so the index captured up front may no longer point at
+    /// (or may no longer contain) the same account by the time the
+    /// rollback runs.
     func archive(_ account: Account) async {
         guard let index = accounts.firstIndex(where: { $0.id == account.id }) else { return }
         accounts[index].isArchived = true
         do {
             try await AccountsClient.archive(accountId: account.id)
         } catch {
-            accounts[index].isArchived = false
+            if let currentIndex = accounts.firstIndex(where: { $0.id == account.id }) {
+                accounts[currentIndex].isArchived = false
+            }
             errorMessage = error.localizedDescription
         }
     }

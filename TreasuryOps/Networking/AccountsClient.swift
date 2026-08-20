@@ -28,12 +28,18 @@ enum AccountsClient {
     }
 
     /// `POST /v1/accounts`. Requires an `Idempotency-Key` header, same as
-    /// the batch/patch mutations in `TransactionsClient`.
+    /// the batch/patch mutations in `TransactionsClient`. Unlike those,
+    /// `idempotencyKey` is a caller-supplied parameter rather than a fresh
+    /// `UUID()` per call: a caller that retries the same logical
+    /// submission (e.g. after a lost response) needs to reuse one key so
+    /// the server recognizes the replay instead of creating a duplicate
+    /// account.
     static func create(
         name: String,
         type: Account.Kind,
         openingBalanceMinor: Int,
-        creditCardConfig: CreditCardConfigInput?
+        creditCardConfig: CreditCardConfigInput?,
+        idempotencyKey: String
     ) async throws -> Account {
         struct RequestBody: Encodable {
             let name: String
@@ -45,7 +51,7 @@ enum AccountsClient {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
-        request.setValue(UUID().uuidString, forHTTPHeaderField: "Idempotency-Key")
+        request.setValue(idempotencyKey, forHTTPHeaderField: "Idempotency-Key")
         request.httpBody = try JSONEncoder().encode(RequestBody(
             name: name,
             type: type,

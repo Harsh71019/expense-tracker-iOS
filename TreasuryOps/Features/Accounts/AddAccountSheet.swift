@@ -1,11 +1,15 @@
+import Foundation
 import SwiftUI
 
 struct AddAccountSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     /// Returns `nil` on success (the sheet dismisses itself) or an error
-    /// message to display inline.
-    let onCreate: (String, Account.Kind, Int, AccountsClient.CreditCardConfigInput?) async -> String?
+    /// message to display inline. `idempotencyKey` is generated once per
+    /// sheet presentation (not per attempt) so a retry after a lost
+    /// response replays the same logical request instead of risking a
+    /// duplicate account.
+    let onCreate: (String, Account.Kind, Int, AccountsClient.CreditCardConfigInput?, String) async -> String?
 
     @State private var name = ""
     @State private var type: Account.Kind = .bank
@@ -14,6 +18,7 @@ struct AddAccountSheet: View {
     @State private var dueDay = 15
     @State private var isSubmitting = false
     @State private var errorMessage: String?
+    @State private var idempotencyKey = UUID().uuidString
 
     var body: some View {
         NavigationStack {
@@ -54,9 +59,11 @@ struct AddAccountSheet: View {
             }
             .navigationTitle("New Account")
             .navigationBarTitleDisplayMode(.inline)
+            .interactiveDismissDisabled(isSubmitting)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .disabled(isSubmitting)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     if isSubmitting {
@@ -73,15 +80,28 @@ struct AddAccountSheet: View {
     private var isValid: Bool {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return false }
-        return openingBalanceText.isEmpty || Decimal(string: openingBalanceText) != nil
+        return openingBalanceMinorIfValid != nil
     }
 
-    private var openingBalanceMinor: Int {
-        guard !openingBalanceText.isEmpty, let decimal = Decimal(string: openingBalanceText) else { return 0 }
-        return Int(truncating: NSDecimalNumber(decimal: decimal * 100))
+    /// `nil` for empty input (treated as a zero opening balance) or text
+    /// that doesn't parse; also `nil` when the value has sub-paise
+    /// precision (e.g. "0.001"), which `Int(truncating:)` would otherwise
+    /// silently round away instead of rejecting.
+    private var openingBalanceMinorIfValid: Int? {
+        guard !openingBalanceText.isEmpty else { return 0 }
+        guard let decimal = Decimal(string: openingBalanceText) else { return nil }
+
+        let scaled = decimal * 100
+        var rounded = Decimal()
+        var mutableScaled = scaled
+        NSDecimalRound(&rounded, &mutableScaled, 0, .plain)
+        guard rounded == scaled else { return nil }
+
+        return Int(truncating: NSDecimalNumber(decimal: rounded))
     }
 
     private func submit() async {
+        guard !isSubmitting, let openingBalanceMinor = openingBalanceMinorIfValid else { return }
         isSubmitting = true
         errorMessage = nil
         defer { isSubmitting = false }
@@ -94,7 +114,8 @@ struct AddAccountSheet: View {
             name.trimmingCharacters(in: .whitespacesAndNewlines),
             type,
             openingBalanceMinor,
-            creditCardConfig
+            creditCardConfig,
+            idempotencyKey
         )
         if let failureMessage {
             errorMessage = failureMessage
@@ -105,5 +126,5 @@ struct AddAccountSheet: View {
 }
 
 #Preview {
-    AddAccountSheet(onCreate: { _, _, _, _ in nil })
+    AddAccountSheet(onCreate: { _, _, _, _, _ in nil })
 }

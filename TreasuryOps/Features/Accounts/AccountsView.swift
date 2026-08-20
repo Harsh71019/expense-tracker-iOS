@@ -29,12 +29,13 @@ struct AccountsView: View {
                 }
             }
             .sheet(isPresented: $isShowingAddAccount) {
-                AddAccountSheet { name, type, openingBalanceMinor, creditCardConfig in
+                AddAccountSheet { name, type, openingBalanceMinor, creditCardConfig, idempotencyKey in
                     await model.createAccount(
                         name: name,
                         type: type,
                         openingBalanceMinor: openingBalanceMinor,
-                        creditCardConfig: creditCardConfig
+                        creditCardConfig: creditCardConfig,
+                        idempotencyKey: idempotencyKey
                     )
                 }
             }
@@ -43,6 +44,23 @@ struct AccountsView: View {
                     initialFilters: TransactionFilters(accountId: account.id),
                     title: account.name
                 )
+            }
+            // The empty-state ContentUnavailableView already shows
+            // `errorMessage` inline when there's nothing else on screen;
+            // this alert covers the other case — a refresh or archive
+            // that fails while accounts from a prior successful load are
+            // still visible, which would otherwise fail silently.
+            .alert(
+                "Something Went Wrong",
+                isPresented: Binding(
+                    get: { model.errorMessage != nil && model.accounts.isEmpty == false },
+                    set: { isPresented in if !isPresented { model.clearError() } }
+                ),
+                presenting: model.errorMessage
+            ) { _ in
+                Button("OK", role: .cancel) {}
+            } message: { message in
+                Text(message)
             }
             .refreshable { await model.refresh() }
             .task { await model.loadIfNeeded() }
@@ -62,11 +80,13 @@ private struct AccountsContent: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 60)
         } else if let errorMessage = model.errorMessage, model.accounts.isEmpty {
-            ContentUnavailableView(
-                "Couldn't Load Accounts",
-                systemImage: "exclamationmark.triangle",
-                description: Text(errorMessage)
-            )
+            ContentUnavailableView {
+                Label("Couldn't Load Accounts", systemImage: "exclamationmark.triangle")
+            } description: {
+                Text(errorMessage)
+            } actions: {
+                Button("Retry") { Task { await model.refresh() } }
+            }
             .frame(maxWidth: .infinity)
             .padding(.top, 40)
         } else if model.accounts.isEmpty {
