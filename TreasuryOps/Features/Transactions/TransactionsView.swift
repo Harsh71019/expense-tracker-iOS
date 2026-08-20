@@ -190,15 +190,17 @@ private struct BulkActionBar: View {
                 ProgressView()
             } else {
                 Button(action: onAssign) {
-                    Label("Assign Category", systemImage: "tag.fill")
+                    Image(systemName: "tag.fill")
+                        .font(.system(size: 20))
                 }
-                .buttonStyle(.glassProminent)
+                .foregroundStyle(canAssign ? Color.verdigris : Color.secondary)
                 .disabled(!canAssign)
+                .accessibilityLabel("Assign Category")
             }
 
             Spacer()
         }
-        .padding(.vertical, 12)
+        .padding(.vertical, 14)
         .glassEffect(.regular, in: .rect(cornerRadius: 20))
         .padding(.horizontal)
     }
