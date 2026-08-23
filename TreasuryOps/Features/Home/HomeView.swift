@@ -104,6 +104,12 @@ private struct HomeContent: View {
             if let monthly = model.monthlySpending {
                 HomeMonthlySpendingCard(monthly: monthly)
             }
+            if let recurring = model.recurringForecast {
+                HomeRecurringForecastCard(forecast: recurring)
+            }
+            if let investments = model.investments, !investments.items.isEmpty {
+                HomeInvestmentsCard(investments: investments)
+            }
             if model.topSpending.isEmpty == false {
                 HomeTopSpendingCard(items: model.topSpending)
             }

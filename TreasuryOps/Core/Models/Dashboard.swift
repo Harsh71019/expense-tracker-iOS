@@ -21,9 +21,9 @@ struct DashboardStats: Decodable, Equatable {
     }
 
     struct PercentStat: Decodable, Equatable {
-        let valuePct: Double
+        let valuePct: Double?
         let deltaPct: Double?
-        let trend: [Double]
+        let trend: [Double?]
     }
 
     let period: String
@@ -105,3 +105,43 @@ struct SpendMix: Decodable, Equatable {
     let lifestyle: Bucket
     let uncategorized: Bucket
 }
+
+struct DashboardInvestments: Decodable, Equatable {
+    let items: [DashboardInvestmentItem]
+}
+
+struct DashboardInvestmentItem: Identifiable, Decodable, Equatable {
+    struct ValuationPoint: Decodable, Equatable, Hashable {
+        let valuedAt: Date?
+        let valueMinor: Int
+    }
+
+    let assetId: String
+    let name: String
+    let kind: String
+    let currentValueMinor: Int
+    let returnPct: Double?
+    let series: [ValuationPoint]
+
+    var id: String { assetId }
+}
+
+struct RecurringForecast: Decodable, Equatable {
+    let range: String
+    let inMinor: Int
+    let outMinor: Int
+    let netMinor: Int
+    let upcoming: [RecurringForecastUpcomingItem]
+}
+
+struct RecurringForecastUpcomingItem: Identifiable, Decodable, Equatable {
+    let ruleId: String
+    let name: String
+    let icon: String?
+    let type: Transaction.Kind
+    let amountMinor: Int
+    let nextRunAt: Date?
+
+    var id: String { ruleId }
+}
+

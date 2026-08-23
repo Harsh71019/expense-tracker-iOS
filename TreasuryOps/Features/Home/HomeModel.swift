@@ -10,6 +10,8 @@ final class HomeModel {
     private(set) var topSpending: [TopSpendingItem] = []
     private(set) var spendMix: SpendMix?
     private(set) var recentActivity: [RecentActivityItem] = []
+    private(set) var investments: DashboardInvestments?
+    private(set) var recurringForecast: RecurringForecast?
     private(set) var isLoading = false
     private(set) var errorMessage: String?
 
@@ -49,10 +51,12 @@ final class HomeModel {
             async let topSpendingResult = DashboardClient.topSpending(range: .month)
             async let spendMixResult = DashboardClient.spendMix(range: .month)
             async let recentActivityResult = DashboardClient.recentActivity(limit: 8)
+            async let investmentsResult = DashboardClient.investments()
+            async let recurringForecastResult = DashboardClient.recurringForecast(range: .month)
             async let categoriesResult = CategoriesClient.list()
 
-            let (summary, stats, monthly, topSpending, spendMix, recentActivity) = try await (
-                summaryResult, statsResult, monthlyResult, topSpendingResult, spendMixResult, recentActivityResult
+            let (summary, stats, monthly, topSpending, spendMix, recentActivity, investments, recurringForecast) = try await (
+                summaryResult, statsResult, monthlyResult, topSpendingResult, spendMixResult, recentActivityResult, investmentsResult, recurringForecastResult
             )
             // Category icons/colors only decorate RecentActivityCard rows
             // (which already handle a missing Category) — a failure here
@@ -66,6 +70,8 @@ final class HomeModel {
             self.topSpending = topSpending
             self.spendMix = spendMix
             self.recentActivity = recentActivity
+            self.investments = investments
+            self.recurringForecast = recurringForecast
             self.categories = categories
         } catch {
             guard generation == refreshGeneration else { return }

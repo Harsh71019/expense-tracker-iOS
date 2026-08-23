@@ -29,9 +29,9 @@ struct HomeStatsGrid: View {
             )
             StatTile(
                 title: "Savings Rate",
-                valueText: stats.savingsRate.valuePct.formatted(.number.precision(.fractionLength(0))) + "%",
+                valueText: stats.savingsRate.valuePct.map { $0.formatted(.number.precision(.fractionLength(0))) + "%" } ?? "—",
                 deltaPct: stats.savingsRate.deltaPct,
-                trend: stats.savingsRate.trend,
+                trend: stats.savingsRate.trend.map { $0 ?? 0 },
                 tint: .verdigrisBright
             )
             StatTile(

@@ -43,6 +43,14 @@ enum DashboardClient {
         try await get("v1/dashboard/spend-mix", queryItems: [URLQueryItem(name: "range", value: range.rawValue)])
     }
 
+    static func investments() async throws -> DashboardInvestments {
+        try await get("v1/dashboard/investments")
+    }
+
+    static func recurringForecast(range: Range) async throws -> RecurringForecast {
+        try await get("v1/dashboard/recurring-forecast", queryItems: [URLQueryItem(name: "range", value: range.rawValue)])
+    }
+
     private static func get<T: Decodable>(_ path: String, queryItems: [URLQueryItem] = []) async throws -> T {
         var components = URLComponents(
             url: AppEnvironment.apiBaseURL.appendingPathComponent(path),
