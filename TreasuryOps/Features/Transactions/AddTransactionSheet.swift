@@ -79,11 +79,13 @@ struct AddTransactionSheet: View {
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                 }
             }
-            .onChange(of: type) {
-                if let categoryId, matchingCategories.contains(where: { $0.id == categoryId }) == false {
-                    self.categoryId = nil
-                }
-            }
+            .modifier(
+                ClearStaleCategoryOnTypeChange(
+                    type: type,
+                    categoryId: $categoryId,
+                    matchingCategories: matchingCategories
+                )
+            )
             .task { await loadOptions() }
         }
     }
@@ -156,6 +158,22 @@ struct AddTransactionSheet: View {
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+}
+
+/// Isolated so a type switch doesn't rebuild the whole form just to
+/// drop a category that no longer matches.
+private struct ClearStaleCategoryOnTypeChange: ViewModifier {
+    let type: Transaction.Kind
+    @Binding var categoryId: String?
+    let matchingCategories: [Category]
+
+    func body(content: Content) -> some View {
+        content.onChange(of: type) {
+            if let categoryId, matchingCategories.contains(where: { $0.id == categoryId }) == false {
+                self.categoryId = nil
+            }
         }
     }
 }
