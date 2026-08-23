@@ -7,7 +7,7 @@ import Foundation
 /// but separately-named schemas, so one hand-written type here is simpler
 /// and more reliable than reconciling two generated ones.
 struct Transaction: Identifiable, Decodable, Hashable {
-    enum Kind: String, Decodable, Hashable {
+    enum Kind: String, Codable, Hashable {
         case expense, income
     }
 

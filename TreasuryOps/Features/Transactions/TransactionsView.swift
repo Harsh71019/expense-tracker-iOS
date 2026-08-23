@@ -17,6 +17,7 @@ struct TransactionsView: View {
 struct TransactionsScreen: View {
     @State private var model: TransactionsModel
     @State private var isShowingFilters = false
+    @State private var isShowingAddTransaction = false
     @State private var selectedIDs: Set<String> = []
     @State private var editMode: EditMode = .inactive
     @State private var isShowingBatchAssign = false
@@ -42,7 +43,7 @@ struct TransactionsScreen: View {
                     ContentUnavailableView(
                         "No Transactions",
                         systemImage: "list.bullet.rectangle",
-                        description: Text("Transactions will show up here.")
+                        description: Text("Post an expense or income with the plus button.")
                     )
                 } else if model.searchText.isEmpty {
                     ContentUnavailableView(
@@ -77,6 +78,14 @@ struct TransactionsScreen: View {
                     }
                     .accessibilityLabel("Filters")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        isShowingAddTransaction = true
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add Transaction")
+                }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 EditButton()
@@ -104,6 +113,11 @@ struct TransactionsScreen: View {
         .sheet(isPresented: $isShowingFilters) {
             TransactionFilterSheet(filters: model.filters) { newFilters in
                 Task { await model.applyFilters(newFilters) }
+            }
+        }
+        .sheet(isPresented: $isShowingAddTransaction) {
+            AddTransactionSheet(initialAccountId: model.filters.accountId) {
+                Task { await model.refresh() }
             }
         }
         .sheet(isPresented: $isShowingBatchAssign) {

@@ -52,9 +52,69 @@ enum TransactionsClient {
         return try decoder.decode(Page.self, from: data)
     }
 
-    /// `GET /v1/transactions/{id}` — fetches a single transaction by id,
-    /// for entry points (dashboard recent activity) that only have an id
-    /// and a summary shape, not a full `Transaction`.
+    /// `POST /v1/transactions` — creates a new transaction entry.
+    static func create(
+        accountId: String,
+        categoryId: String?,
+        type: Transaction.Kind,
+        amountMinor: Int,
+        occurredAt: Date,
+        description: String,
+        idempotencyKey: UUID
+    ) async throws -> Transaction {
+        struct RequestBody: Encodable {
+            let accountId: String
+            let categoryId: String?
+            let type: Transaction.Kind
+            let amountMinor: Int
+            let occurredAt: Date
+            let description: String
+            let tags: [String]
+
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(accountId, forKey: .accountId)
+                try container.encodeIfPresent(categoryId, forKey: .categoryId)
+                try container.encode(type, forKey: .type)
+                try container.encode(amountMinor, forKey: .amountMinor)
+                try container.encode(occurredAt, forKey: .occurredAt)
+                try container.encode(description, forKey: .description)
+                try container.encode(tags, forKey: .tags)
+            }
+
+            private enum CodingKeys: String, CodingKey {
+                case accountId, categoryId, type, amountMinor, occurredAt, description, tags
+            }
+        }
+
+        var request = URLRequest(url: transactionsURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
+        request.setValue(idempotencyKey.uuidString, forHTTPHeaderField: "Idempotency-Key")
+
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        request.httpBody = try encoder.encode(
+            RequestBody(
+                accountId: accountId,
+                categoryId: categoryId,
+                type: type,
+                amountMinor: amountMinor,
+                occurredAt: occurredAt,
+                description: description,
+                tags: []
+            )
+        )
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateAPIResponse(response, data: data)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(Transaction.self, from: data)
+    }
+
     static func get(id: String) async throws -> Transaction {
         var request = URLRequest(url: transactionsURL.appendingPathComponent(id))
         request.setValue(AppEnvironment.apiOrigin, forHTTPHeaderField: "Origin")
