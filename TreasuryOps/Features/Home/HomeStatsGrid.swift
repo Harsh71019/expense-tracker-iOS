@@ -31,7 +31,7 @@ struct HomeStatsGrid: View {
                 title: "Savings Rate",
                 valueText: stats.savingsRate.valuePct.map { $0.formatted(.number.precision(.fractionLength(0))) + "%" } ?? "—",
                 deltaPct: stats.savingsRate.deltaPct,
-                trend: stats.savingsRate.trend.map { $0 ?? 0 },
+                trend: stats.savingsRate.trend,
                 tint: .verdigrisBright
             )
             StatTile(
@@ -49,7 +49,7 @@ private struct StatTile: View {
     let title: String
     let valueText: String
     let deltaPct: Double?
-    let trend: [Double]
+    let trend: [Double?]
     let tint: Color
     var drillDown: HomeCashflowMetric?
 
@@ -86,10 +86,14 @@ private struct StatTile: View {
                 DeltaBadge(deltaPct: deltaPct)
             }
 
-            if trend.count > 1 {
-                Chart(Array(trend.enumerated()), id: \.offset) { index, value in
-                    BarMark(x: .value("Point", index), y: .value("Value", value))
-                        .foregroundStyle(tint.gradient)
+            if trend.compactMap({ $0 }).count > 1 {
+                Chart {
+                    ForEach(Array(trend.enumerated()), id: \.offset) { index, value in
+                        if let value {
+                            BarMark(x: .value("Point", index), y: .value("Value", value))
+                                .foregroundStyle(tint.gradient)
+                        }
+                    }
                 }
                 .chartXAxis(.hidden)
                 .chartYAxis(.hidden)
@@ -125,7 +129,7 @@ private struct DeltaBadge: View {
             period: "2026-08",
             spent: .init(valueMinor: 42_500_00, deltaPct: 8.4, trend: [3200, 4100, 2800, 5300, 4700, 3900, 6100]),
             income: .init(valueMinor: 95_000_00, deltaPct: 2.1, trend: [95000, 95000, 95000, 95000]),
-            savingsRate: .init(valuePct: 24.6, deltaPct: -3.2, trend: [30, 28, 26, 24.6]),
+            savingsRate: .init(valuePct: 24.6, deltaPct: -3.2, trend: [30, 28, nil, 26, 24.6]),
             netWorth: .init(valueMinor: 480_231_00, deltaPct: 5.6, trend: [420000, 435000, 452000, 480231])
         )
     )
